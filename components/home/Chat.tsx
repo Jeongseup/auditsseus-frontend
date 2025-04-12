@@ -4,16 +4,14 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import Image from "next/image";
 import { 
   Send, 
   Image as ImageIcon, 
   ExternalLink, 
   FileUp, 
-  Check, 
   X, 
-  FileText,
-  AlertCircle
-} from "lucide-react";
+  FileText} from "lucide-react";
 
 // 클라이언트에서는 환경 변수가 필요하지 않음
 
@@ -38,52 +36,68 @@ interface Message {
   };
 }
 
-interface ChatProps {
-  // 레거시 props 제거
-}
-
-export function Chat({ }: ChatProps) {
+export function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   // 스크롤을 맨 아래로 이동시키는 함수
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTo({
+          top: scrollContainer.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    }
   };
 
   // 메시지 변경 시 스크롤 처리를 위한 useEffect
   useEffect(() => {
-    // 즉시 한 번 스크롤
+    const timeoutIds: NodeJS.Timeout[] = [];
+    
+    // 즉시 스크롤
     scrollToBottom();
     
-    // 여러 시간 간격으로 스크롤 실행 (비동기 렌더링 문제 해결)
-    const timeouts = [
-      setTimeout(scrollToBottom, 50),
+    // 렌더링 이후 여러 시점에서 스크롤 시도
+    timeoutIds.push(
       setTimeout(scrollToBottom, 100),
       setTimeout(scrollToBottom, 300),
       setTimeout(scrollToBottom, 500)
-    ];
+    );
     
     return () => {
-      // 모든 타이머 정리
-      timeouts.forEach(clearTimeout);
+      timeoutIds.forEach(clearTimeout);
     };
   }, [messages]);
 
   // 로딩 상태 변경 시에도 스크롤 처리
   useEffect(() => {
-    scrollToBottom();
+    if (isLoading) {
+      scrollToBottom();
+    }
   }, [isLoading]);
 
-  // 컴포넌트가 마운트될 때 스크롤 처리 및 입력 필드 포커스
+  // 컴포넌트가 마운트될 때 스크롤 처리
   useEffect(() => {
     scrollToBottom();
   }, []);
+
+  useEffect(() => {
+    if (isInputFocused) {
+      textareaRef.current?.focus();
+    }
+  }, [isInputFocused]);
+
+  // 메시지가 추가될 때마다 스크롤을 맨 아래로 이동시키는 효과 제거 (중복)
 
   // 파일 선택 핸들러
   const handleFileSelect = () => {
@@ -179,8 +193,8 @@ export function Chat({ }: ChatProps) {
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || `API 요청 실패: ${response.status}`;
-        } catch (e) {
-          errorMsg = `API 요청 실패: ${response.status} - ${response.statusText}`;
+        } catch (err) {
+          errorMsg = `API 요청 실패: ${response.status} - ${response.statusText}, ${String(err)}`;
         }
         
         throw new Error(errorMsg);
@@ -247,8 +261,6 @@ export function Chat({ }: ChatProps) {
 
   // 메시지 렌더링 함수
   const renderMessage = (message: Message, index: number) => {
-    const isLastMessage = index === messages.length - 1;
-    
     return (
       <div 
         key={index} 
@@ -278,11 +290,15 @@ export function Chat({ }: ChatProps) {
                     <div key={i} className="mt-2">
                       {attachment.contentType.startsWith('image/') ? (
                         <div className="relative">
-                          <img 
-                            src={attachment.url} 
-                            alt={attachment.title}
-                            className="w-full rounded-md object-cover max-h-[300px]" 
-                          />
+                          <div className="relative w-full h-[300px]">
+                            <Image 
+                              src={attachment.url} 
+                              alt={attachment.title}
+                              fill
+                              sizes="(max-width: 768px) 100vw, 80vw"
+                              className="rounded-md object-cover"
+                            />
+                          </div>
                           <span className="block text-xs opacity-70 mt-1">{attachment.title}</span>
                         </div>
                       ) : attachment.contentType === 'application/pdf' ? (
@@ -345,7 +361,10 @@ export function Chat({ }: ChatProps) {
         </div>
       </div>
       
-      <ScrollArea className="flex-1 p-4 overflow-y-auto">
+      <ScrollArea 
+        className="flex-1 p-4 overflow-y-auto"
+        ref={scrollAreaRef}
+      >
         <div className="space-y-6 min-h-full">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-4 opacity-80">
@@ -374,13 +393,8 @@ export function Chat({ }: ChatProps) {
           ) : (
             <>
               {messages.map((message, i) => renderMessage(message, i))}
-              {/* 스크롤 위치를 설정할 빈 div */}
-              <div ref={messagesEndRef} style={{ height: "1px" }} />
             </>
           )}
-          {/* 로딩 상태 UI를 제거하여 중복 표시 방지 - 이미 메시지 배열에서 처리함 */}
-          {/* 항상 존재하는 최하단 스크롤 타겟 */}
-          {messages.length === 0 && <div ref={messagesEndRef} style={{ height: "1px" }} />}
         </div>
       </ScrollArea>
       
@@ -438,6 +452,8 @@ export function Chat({ }: ChatProps) {
               placeholder={selectedFile ? "파일과 함께 보낼 메시지를 입력하세요 (선택사항)" : "메시지를 입력하세요..."}
               className="flex-1 bg-slate-700 border-slate-600 focus:border-blue-500 text-slate-100 rounded-full"
               disabled={isLoading}
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => setIsInputFocused(false)}
             />
             <Button 
               type="submit" 
