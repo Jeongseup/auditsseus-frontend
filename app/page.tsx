@@ -47,7 +47,7 @@ export default function Home() {
   const [account, setAccount] = useState<string>("");
   const [isConnecting, setIsConnecting] = useState(false);
   const [chainId, setChainId] = useState<string | null>(null);
-
+  
   // 계정 변경 처리
   const handleAccountsChanged = useCallback((accounts: unknown) => {
     const accountArray = accounts as string[];
@@ -195,7 +195,7 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-slate-700 bg-slate-800">
-        <div className="container mx-auto py-4 px-4 flex justify-between items-center">
+        <div className="container mx-auto py-3 px-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-6 w-6 text-blue-400" />
             <h1 className="text-xl font-bold">Auditsseus</h1>
@@ -250,9 +250,9 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 py-4">
         {/* 탭 내비게이션 (모바일) */}
-        <div className="flex md:hidden overflow-x-auto pb-2 mb-4">
+        <div className="flex md:hidden overflow-x-auto pb-2 mb-2">
           <Button 
             variant={activeTab === "nft" ? "default" : "ghost"} 
             className={`rounded-full text-sm whitespace-nowrap ${activeTab === "nft" ? "bg-blue-400 hover:bg-blue-500 text-slate-900" : ""}`}
@@ -277,32 +277,20 @@ export default function Home() {
         </div>
 
         {/* 지갑 연결 필요 상태 */}
-        <div className="text-center mb-8">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent mb-4">
+        <div className="text-center mb-4">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent mb-2">
             Audit SSEUS
           </h2>
-          <p className="text-lg text-slate-400">
+          <p className="text-sm text-slate-400">
           AI-powered creation similarity check solution.
           </p>
-          <p className="text-lg text-slate-400">
-          Verify the originality of your work before copyright registration reduce 
-          potential dispute risks, and secure your rights safely
+          <p className="text-sm text-slate-400">
+          Verify the originality of your work before copyright registration
           </p>
         </div>
           <div className="max-w-4xl mx-auto">
-            {/* <h2 className="text-2xl font-bold mb-6 text-center bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-              Audit your images and whitepapers with AI-powered analysis
-            </h2> */}
-            <div className="mb-8">
-              <Chat onImageUploadClick={() => {
-                const fileUploadButton = document.getElementById('fileUploadButton');
-                if (fileUploadButton) {
-                  fileUploadButton.click();
-                }
-              }} />
-            </div>
-            <div className="hidden">
-              <FileUpload id="fileUploadButton" />
+            <div className="mb-4">
+              <Chat />
             </div>
           </div>
       
@@ -426,19 +414,19 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="py-6 border-t border-slate-700 bg-slate-800">
+      <footer className="py-3 border-t border-slate-700 bg-slate-800">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 md:mb-0">
-              <ShieldCheck className="h-5 w-5 text-blue-400 mr-2" />
-              <p className="text-sm text-slate-400">
+            <div className="flex items-center mb-2 md:mb-0">
+              <ShieldCheck className="h-4 w-4 text-blue-400 mr-2" />
+              <p className="text-xs text-slate-400">
                 © 2024 Auditsseus. For IP, By the IP, With IP.
               </p>
             </div>
-            <div className="flex space-x-6">
-              <a href="#" className="text-sm text-slate-400 hover:text-blue-400 transition-colors">Terms of Service</a>
-              <a href="#" className="text-sm text-slate-400 hover:text-blue-400 transition-colors">Privacy Policy</a>
-              <a href="#" className="text-sm text-slate-400 hover:text-blue-400 transition-colors">Contact</a>
+            <div className="flex space-x-4">
+              <a href="#" className="text-xs text-slate-400 hover:text-blue-400 transition-colors">Terms</a>
+              <a href="#" className="text-xs text-slate-400 hover:text-blue-400 transition-colors">Privacy</a>
+              <a href="#" className="text-xs text-slate-400 hover:text-blue-400 transition-colors">Contact</a>
             </div>
           </div>
         </div>

@@ -15,15 +15,18 @@ type FileWithPreview = {
 
 interface FileUploadProps {
   id?: string;
+  onFileSelected?: (file: File) => void;
 }
 
-export const FileUpload = ({ id }: FileUploadProps = {}) => {
+export const FileUpload = ({ id, onFileSelected }: FileUploadProps = {}) => {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) return;
+    
     const newFiles = acceptedFiles.map(file => {
       // 파일 타입 판별
       let type: 'image' | 'pdf' | 'text' | 'unknown' = 'unknown';
@@ -46,7 +49,45 @@ export const FileUpload = ({ id }: FileUploadProps = {}) => {
     });
 
     setFiles(prevFiles => [...prevFiles, ...newFiles]);
-  }, []);
+    
+    // 파일이 선택되었을 때 콜백 호출
+    if (onFileSelected && acceptedFiles.length > 0) {
+      onFileSelected(acceptedFiles[0]);
+    }
+    
+    // 이미지 파일인 경우 자동으로 분석 시작 (다음 렌더링 사이클에서)
+    if (newFiles.some(f => f.type === 'image')) {
+      setTimeout(() => {
+        if (files.length > 0 || newFiles.length > 0) {
+          setIsProcessing(true);
+          setProcessingStatus('processing');
+          setProcessingProgress(0);
+          
+          // 프로그레스 시뮬레이션
+          const interval = setInterval(() => {
+            setProcessingProgress(prev => {
+              if (prev >= 100) {
+                clearInterval(interval);
+                return 100;
+              }
+              return prev + 5;
+            });
+          }, 100);
+          
+          // API 호출 시뮬레이션
+          setTimeout(() => {
+            clearInterval(interval);
+            setProcessingProgress(100);
+            setProcessingStatus('success');
+            setIsProcessing(false);
+            
+            // API 호출 성공
+            toast.success('분석이 완료되었습니다.');
+          }, 2000);
+        }
+      }, 0);
+    }
+  }, [onFileSelected]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -56,59 +97,6 @@ export const FileUpload = ({ id }: FileUploadProps = {}) => {
       'text/plain': []
     }
   });
-
-  const handleProcess = async () => {
-    if (files.length === 0) {
-      toast.error('파일을 업로드해주세요.');
-      return;
-    }
-
-    setIsProcessing(true);
-    setProcessingStatus('processing');
-    setProcessingProgress(0);
-
-    try {
-      // 프로그레스 시뮬레이션
-      const interval = setInterval(() => {
-        setProcessingProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return prev + 5;
-        });
-      }, 100);
-
-      // API 호출 시뮬레이션
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // 프로그레스 완료 처리
-      clearInterval(interval);
-      setProcessingProgress(100);
-      setProcessingStatus('success');
-      
-      // API 호출 성공
-      toast.success('분석이 완료되었습니다.');
-      
-      // 실제 API 호출 예시
-      // const formData = new FormData();
-      // files.forEach(fileObj => {
-      //   formData.append('files', fileObj.file);
-      // });
-      // const response = await fetch('/api/analyze', {
-      //   method: 'POST',
-      //   body: formData
-      // });
-      // const data = await response.json();
-      
-    } catch (error) {
-      setProcessingStatus('error');
-      toast.error('오류가 발생했습니다. 다시 시도해주세요.');
-      console.error(error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   const removeFile = (index: number) => {
     setFiles(files => {
@@ -277,7 +265,33 @@ export const FileUpload = ({ id }: FileUploadProps = {}) => {
 
           <Button 
             className="w-full rounded-xl h-12 bg-blue-400 hover:bg-blue-500 text-slate-900 mt-4" 
-            onClick={handleProcess}
+            onClick={() => {
+              setIsProcessing(true);
+              setProcessingStatus('processing');
+              setProcessingProgress(0);
+              
+              // 프로그레스 시뮬레이션
+              const interval = setInterval(() => {
+                setProcessingProgress(prev => {
+                  if (prev >= 100) {
+                    clearInterval(interval);
+                    return 100;
+                  }
+                  return prev + 5;
+                });
+              }, 100);
+              
+              // API 호출 시뮬레이션
+              setTimeout(() => {
+                clearInterval(interval);
+                setProcessingProgress(100);
+                setProcessingStatus('success');
+                setIsProcessing(false);
+                
+                // API 호출 성공
+                toast.success('분석이 완료되었습니다.');
+              }, 2000);
+            }}
             disabled={isProcessing}
           >
             {isProcessing ? '처리 중...' : '분석하기'}
