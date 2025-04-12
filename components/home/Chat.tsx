@@ -204,9 +204,15 @@ export function Chat() {
       let data;
       try {
         const textData = await response.text();
-        data = textData ? JSON.parse(textData) : { response: "빈 응답이 반환되었습니다." };
-      } catch (parseError) {
-        console.error("JSON 파싱 오류:", parseError);
+        try {
+          data = JSON.parse(textData);
+        } catch (parseError) {
+          console.error("JSON 파싱 오류:", parseError);
+          // JSON 파싱 실패 시 텍스트 응답을 그대로 사용
+          data = { response: textData };
+        }
+      } catch (error) {
+        console.error("응답 데이터 읽기 오류:", error);
         throw new Error("서버 응답을 처리할 수 없습니다. 관리자에게 문의하세요.");
       }
       
@@ -215,17 +221,28 @@ export function Chat() {
         const filtered = prev.filter(msg => !msg.isLoading);
         
         // API 응답 처리
-        if (Array.isArray(data) && data.length > 0) {
-          const messageResponse = data[0];
+        if (Array.isArray(data)) {
+          // 배열인 경우 각 메시지를 순차적으로 추가
+          return [
+            ...filtered,
+            ...data.map(messageResponse => ({
+              text: messageResponse.text || "응답이 없습니다.", 
+              isUser: false,
+              createdAt: Date.now(),
+              action: messageResponse.action
+            }))
+          ];
+        } else if (data.response) {
+          // 단일 응답인 경우
           return [...filtered, { 
-            text: messageResponse.text, 
+            text: data.response, 
             isUser: false,
-            createdAt: Date.now(),
-            action: messageResponse.action 
+            createdAt: Date.now()
           }];
         } else {
+          // 기타 경우
           return [...filtered, { 
-            text: data.response || "응답이 없습니다.", 
+            text: "응답 형식이 올바르지 않습니다.", 
             isUser: false,
             createdAt: Date.now()
           }];
@@ -233,12 +250,17 @@ export function Chat() {
       });
     } catch (error) {
       console.error("Error sending message:", error);
-      let errorMessage = "Error: Could not get response";
+      let errorMessage = "메시지 전송 중 오류가 발생했습니다.";
       
       if (error instanceof DOMException && error.name === 'AbortError') {
         errorMessage = "요청 시간이 초과되었습니다. 나중에 다시 시도해 주세요.";
       } else if (error instanceof Error) {
-        errorMessage = `오류가 발생했습니다: ${error.message}`;
+        // 504 Gateway Timeout 에러 처리
+        if (error.message.includes("504")) {
+          errorMessage = "서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.";
+        } else {
+          errorMessage = `오류가 발생했습니다: ${error.message}`;
+        }
       }
       
       // 로딩 메시지 제거 및 오류 메시지 추가
