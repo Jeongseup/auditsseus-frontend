@@ -131,6 +131,10 @@ export function Chat() {
     if (isLoading) return;
     if (!input.trim() && !selectedFile) return;
     
+    // AbortController 설정
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5분 타임아웃
+    
     // 첨부 파일이 있는 경우 첨부 파일 정보 생성
     const attachments: IAttachment[] | undefined = selectedFile
       ? [{
@@ -148,7 +152,7 @@ export function Chat() {
       attachments
     };
     
-    // 로딩 메시지 추가 - 하나만 추가되도록 수정
+    // 로딩 메시지 추가
     const loadingMessage: Message = {
       text: "응답 생성 중...",
       isUser: false,
@@ -156,7 +160,6 @@ export function Chat() {
       createdAt: Date.now()
     };
     
-    // 사용자 메시지와 로딩 메시지를 한번에 추가
     setMessages(prev => [...prev, userMessage, loadingMessage]);
     setInput("");
     setIsLoading(true);
@@ -166,24 +169,23 @@ export function Chat() {
       
       // 파일이 있는 경우 FormData로 요청
       if (selectedFile) {
-        // FormData 생성
         const formData = new FormData();
         formData.append('text', input.trim() || '');
         formData.append('file', selectedFile);
         
-        // 내부 API 라우트 호출
         response = await fetch('/api/message', {
           method: "POST",
           body: formData,
+          signal: controller.signal // AbortController 시그널 추가
         });
       } else {
-        // 파일이 없는 경우 JSON으로 요청
         response = await fetch('/api/message', {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ text: input.trim() }),
+          signal: controller.signal // AbortController 시그널 추가
         });
       }
       
@@ -273,6 +275,7 @@ export function Chat() {
         }];
       });
     } finally {
+      clearTimeout(timeoutId); // 타임아웃 타이머 정리
       setIsLoading(false);
       setSelectedFile(null);
       if (fileInputRef.current) {
